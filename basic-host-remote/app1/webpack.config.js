@@ -7,7 +7,7 @@ module.exports = {
   mode: "development",
   devServer: {
     contentBase: path.join(__dirname, "dist"),
-    port: 3001,
+    port: 30001,
   },
   output: {
     publicPath: "auto",
@@ -36,7 +36,29 @@ module.exports = {
     new ModuleFederationPlugin({
       name: "app1",
       remotes: {
-        app2: `app2@${getRemoteEntryUrl(3002)}`,
+        app2: `promise new Promise(resolve => {
+          const remoteUrlWithVersion = '${getRemoteEntryUrl(30002)}'
+          const script = document.createElement('script')
+          script.src = remoteUrlWithVersion
+          script.onload = () => {
+            // the injected script has loaded and is available on window
+            // we can now resolve this Promise
+            const proxy = {
+              get: (request) => window.app2.get(request),
+              init: (arg) => {
+                try {
+                  return window.app2.init(arg)
+                } catch(e) {
+                  console.log('remote container already initialized')
+                }
+              }
+            }
+            resolve(proxy)
+          }
+          // inject this script with the src set to the versioned remoteEntry.js
+          document.head.appendChild(script);
+        })
+        `,
       },
       shared: { react: { singleton: true }, "react-dom": { singleton: true } },
     }),
